@@ -17,9 +17,9 @@ let () =
   in
   let arg_spec = [
     (*$ foreach_version (fun suffix version ->
-          printf "(\"-to-ocaml%s\", Arg.String (add Migrate_parsetree.OCaml_%s),\n" suffix suffix;
-          printf "\"<filename> Produce an ast valid for OCaml %s in <filename>\");\n" version;
-        )
+      printf "(\"-to-ocaml%s\", Arg.String (add Migrate_parsetree.OCaml_%s),\n" suffix suffix;
+      printf "\"<filename> Produce an ast valid for OCaml %s in <filename>\");\n" version;
+      )
     *)
     ("-to-ocaml402", Arg.String (add Migrate_parsetree.OCaml_402),
      "<filename> Produce an ast valid for OCaml 4.02 in <filename>");
@@ -33,6 +33,8 @@ let () =
      "<filename> Produce an ast valid for OCaml 4.06 in <filename>");
     ("-to-ocaml407", Arg.String (add Migrate_parsetree.OCaml_407),
      "<filename> Produce an ast valid for OCaml 4.07 in <filename>");
+    ("-to-ocaml408", Arg.String (add Migrate_parsetree.OCaml_408),
+     "<filename> Produce an ast valid for OCaml 4.08 in <filename>");
     (*$*)
   ] in
   Arg.parse arg_spec set_input usage_msg;
@@ -54,17 +56,17 @@ let () =
     src_filename (Migrate_parsetree.string_of_ocaml_version
                     (Migrate_parsetree.ast_version ast));
   List.iter (fun (version, dst_filename) ->
-      match
-        let ast' = Migrate_parsetree.migrate_to_version ast version in
-        let oc = open_out_bin dst_filename in
-        Migrate_parsetree.to_channel oc src_filename ast';
-        close_out_noerr oc
-      with
-      | () ->
-        Printf.printf "Successfully converted %S to OCaml %s in %S\n"
-          !input (Migrate_parsetree.string_of_ocaml_version version) dst_filename
-      | exception exn ->
-        Printf.eprintf "Failed to convert %S to OCaml %s in %S:\n%s%!\n"
-          !input (Migrate_parsetree.string_of_ocaml_version version) dst_filename
-          (Printexc.to_string exn)
-    ) (List.rev !conversions)
+    match
+      let ast' = Migrate_parsetree.migrate_to_version ast version in
+      let oc = open_out_bin dst_filename in
+      Migrate_parsetree.to_channel oc src_filename ast';
+      close_out_noerr oc
+    with
+    | () ->
+      Printf.printf "Successfully converted %S to OCaml %s in %S\n"
+        !input (Migrate_parsetree.string_of_ocaml_version version) dst_filename
+    | exception exn ->
+      Printf.eprintf "Failed to convert %S to OCaml %s in %S:\n%s%!\n"
+        !input (Migrate_parsetree.string_of_ocaml_version version) dst_filename
+        (Printexc.to_string exn)
+  ) (List.rev !conversions)

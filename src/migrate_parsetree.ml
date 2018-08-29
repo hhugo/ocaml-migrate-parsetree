@@ -22,7 +22,7 @@ module Def = Migrate_parsetree_def
 
 (* Copy of OCaml parsetrees *)
 (*$foreach_version (fun suffix _ ->
-     printf "module Ast_%s = Ast_%s\n" suffix suffix
+  printf "module Ast_%s = Ast_%s\n" suffix suffix
   )*)
 module Ast_402 = Ast_402
 module Ast_403 = Ast_403
@@ -30,6 +30,7 @@ module Ast_404 = Ast_404
 module Ast_405 = Ast_405
 module Ast_406 = Ast_406
 module Ast_407 = Ast_407
+module Ast_408 = Ast_408
 (*$*)
 
 (* A module for marshalling/unmarshalling arbitrary versions of Asts *)
@@ -37,8 +38,8 @@ module Ast_io = Migrate_parsetree_ast_io
 
 (* Manual migration between versions *)
 (*$foreach_version_pair (fun x y ->
-     printf "module Migrate_%s_%s = Migrate_parsetree_%s_%s\n" x y x y;
-     printf "module Migrate_%s_%s = Migrate_parsetree_%s_%s\n" y x y x;
+  printf "module Migrate_%s_%s = Migrate_parsetree_%s_%s\n" x y x y;
+  printf "module Migrate_%s_%s = Migrate_parsetree_%s_%s\n" y x y x;
   )*)
 module Migrate_402_403 = Migrate_parsetree_402_403
 module Migrate_403_402 = Migrate_parsetree_403_402
@@ -50,6 +51,8 @@ module Migrate_405_406 = Migrate_parsetree_405_406
 module Migrate_406_405 = Migrate_parsetree_406_405
 module Migrate_406_407 = Migrate_parsetree_406_407
 module Migrate_407_406 = Migrate_parsetree_407_406
+module Migrate_407_408 = Migrate_parsetree_407_408
+module Migrate_408_407 = Migrate_parsetree_408_407
 (*$*)
 
 (* An abstraction of OCaml compiler versions *)
@@ -59,7 +62,7 @@ module Versions = Migrate_parsetree_versions
 module type OCaml_version = Versions.OCaml_version
 
 (*$foreach_version (fun suffix _ ->
-     printf "module OCaml_%s = Versions.OCaml_%s\n" suffix suffix
+  printf "module OCaml_%s = Versions.OCaml_%s\n" suffix suffix
   )*)
 module OCaml_402 = Versions.OCaml_402
 module OCaml_403 = Versions.OCaml_403
@@ -67,6 +70,7 @@ module OCaml_404 = Versions.OCaml_404
 module OCaml_405 = Versions.OCaml_405
 module OCaml_406 = Versions.OCaml_406
 module OCaml_407 = Versions.OCaml_407
+module OCaml_408 = Versions.OCaml_408
 (*$*)
 module OCaml_current = Versions.OCaml_current
 
