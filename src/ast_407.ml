@@ -2838,15 +2838,15 @@ end = struct
         );
     }
 
-  let rec extension_of_error {loc; msg; if_highlight; sub} =
-    { loc; txt = "ocaml.error" },
-    PStr ([Str.eval (Exp.constant (Pconst_string (msg, None)));
-           Str.eval (Exp.constant (Pconst_string (if_highlight, None)))] @
-          (List.map (fun ext -> Str.extension (extension_of_error ext)) sub))
+  let extension_of_error _ = assert false
+    (* { loc; txt = "ocaml.error" },
+     * PStr ([Str.eval (Exp.constant (Pconst_string (msg, None)));
+     *        Str.eval (Exp.constant (Pconst_string (if_highlight, None)))] @
+     *       (List.map (fun ext -> Str.extension (extension_of_error ext)) sub)) *)
 
-  let attribute_of_warning loc s =
-    { loc; txt = "ocaml.ppwarning" },
-    PStr ([Str.eval ~loc (Exp.constant (Pconst_string (s, None)))])
+  let attribute_of_warning _loc _s = assert false
+    (* { loc; txt = "ocaml.ppwarning" },
+     * PStr ([Str.eval ~loc (Exp.constant (Pconst_string (s, None)))]) *)
 
 end
 

@@ -13,7 +13,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-include Migrate_parsetree_405_404_migrate
+include Migrate_parsetree_408_407_migrate
 
 (*$ open Printf
     let fields = [
@@ -72,6 +72,7 @@ let copy_mapper = fun
      typ;
      type_declaration;
      type_extension;
+     type_exception = _;
      type_kind;
      value_binding;
      value_description;
@@ -79,7 +80,7 @@ let copy_mapper = fun
      payload;
      (*$*)
    } as mapper) ->
-  let module R = Migrate_parsetree_404_405_migrate in
+  let module R = Migrate_parsetree_407_408_migrate in
   {
     To.Ast_mapper.
     (*$ foreach_field (fun s ->
