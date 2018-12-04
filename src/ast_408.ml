@@ -427,10 +427,16 @@ module Parsetree = struct
 
              (module ME : S) is represented as
              Pexp_constraint(Pexp_pack, Ptyp_package S) *)
-    | Pexp_open of override_flag * Longident.t loc * expression
+    | Pexp_open of open_declaration * expression
           (* M.(E)
              let open M in E
              let! open M in E *)
+    | Pexp_letop of {
+      let_ : binding_op;
+      ands : binding_op list;
+      body : expression;
+    }
+
     | Pexp_extension of extension
           (* [%id] *)
     | Pexp_unreachable
@@ -444,6 +450,16 @@ module Parsetree = struct
       }
 
   (* Value descriptions *)
+
+
+  and binding_op (*IF_CURRENT = Parsetree.binding_op *) =
+    {
+      pbop_op : string loc;
+      pbop_pat : pattern;
+      pbop_exp : expression;
+      pbop_loc : Location.t;
+    }
+
 
   and value_description (*IF_CURRENT = Parsetree.value_description *) =
       {
@@ -594,7 +610,7 @@ module Parsetree = struct
            *)
     | Pcty_extension of extension
           (* [%id] *)
-    | Pcty_open of override_flag * Longident.t loc * class_type
+    | Pcty_open of open_description * class_type
           (* let open M in CT *)
 
   and class_signature (*IF_CURRENT = Parsetree.class_signature *) =
@@ -686,7 +702,7 @@ module Parsetree = struct
           (* (CE : CT) *)
     | Pcl_extension of extension
     (* [%id] *)
-    | Pcl_open of override_flag * Longident.t loc * class_expr
+    | Pcl_open of open_description * class_expr
     (* let open M in CE *)
 
 
@@ -779,12 +795,16 @@ module Parsetree = struct
            *)
     | Psig_type of rec_flag * type_declaration list
           (* type t1 = ... and ... and tn = ... *)
+    | Psig_typesubst of type_declaration list
+        (* type t1 := ... and ... and tn := ...  *)
     | Psig_typext of type_extension
           (* type t1 += ... *)
     | Psig_exception of type_exception
           (* exception C of T *)
     | Psig_module of module_declaration
           (* module X : MT *)
+    | Psig_modsubst of module_substitution
+        (* module X := M *)
     | Psig_recmodule of module_declaration list
           (* module rec X1 : MT1 and ... and Xn : MTn *)
     | Psig_modtype of module_type_declaration
@@ -811,6 +831,13 @@ module Parsetree = struct
        pmd_loc: Location.t;
       }
   (* S : MT *)
+  and module_substitution (*IF_CURRENT = Parsetree.module_substitution *) =
+    {
+     pms_name: string loc;
+     pms_manifest: Longident.t loc;
+     pms_attributes: attributes; (* ... [@@id1] [@@id2] *)
+     pms_loc: Location.t;
+    }
 
   and module_type_declaration (*IF_CURRENT = Parsetree.module_type_declaration *) =
       {
@@ -823,30 +850,45 @@ module Parsetree = struct
      S       (abstract module type declaration, pmtd_type = None)
   *)
 
-  and open_description (*IF_CURRENT = Parsetree.open_description *) =
-      {
-       popen_lid: Longident.t loc;
-       popen_override: override_flag;
-       popen_loc: Location.t;
-       popen_attributes: attributes;
-      }
   (* open! X - popen_override = Override (silences the 'used identifier
                                 shadowing' warning)
      open  X - popen_override = Fresh
    *)
 
-  and 'a include_infos (*IF_CURRENT = 'a Parsetree.include_infos *) =
-      {
-       pincl_mod: 'a;
-       pincl_loc: Location.t;
-       pincl_attributes: attributes;
-      }
+    and 'a open_infos (*IF_CURRENT = 'a Parsetree.open_infos *) =
+    {
+     popen_expr: 'a;
+     popen_override: override_flag;
+     popen_loc: Location.t;
+     popen_attributes: attributes;
+    }
+(* open! X - popen_override = Override (silences the 'used identifier
+                              shadowing' warning)
+   open  X - popen_override = Fresh
+ *)
 
-  and include_description = module_type include_infos
-  (* include MT *)
+and open_description = Longident.t loc open_infos
+(* open M.N
+   open M(N).O *)
 
-  and include_declaration = module_expr include_infos
-  (* include ME *)
+and open_declaration = module_expr open_infos
+(* open M.N
+   open M(N).O
+   open struct ... end *)
+
+and 'a include_infos (*IF_CURRENT = 'a Parsetree.include_infos *) =
+  {
+    pincl_mod: 'a;
+    pincl_loc: Location.t;
+    pincl_attributes: attributes;
+  }
+
+
+and include_description = module_type include_infos
+(* include MT *)
+
+and include_declaration = module_expr include_infos
+(* include ME *)
 
   and with_constraint (*IF_CURRENT = Parsetree.with_constraint *) =
     | Pwith_type of Longident.t loc * type_declaration
@@ -917,7 +959,7 @@ module Parsetree = struct
           (* module rec X1 = ME1 and ... and Xn = MEn *)
     | Pstr_modtype of module_type_declaration
           (* module type S = MT *)
-    | Pstr_open of open_description
+    | Pstr_open of open_declaration
           (* open X *)
     | Pstr_class of class_declaration list
           (* class c1 = ... and ... and cn = ... *)
@@ -1302,7 +1344,7 @@ module Ast_helper : sig
       val object_: ?loc:loc -> ?attrs:attrs -> class_structure -> expression
       val newtype: ?loc:loc -> ?attrs:attrs -> str -> expression -> expression
       val pack: ?loc:loc -> ?attrs:attrs -> module_expr -> expression
-      val open_: ?loc:loc -> ?attrs:attrs -> override_flag -> lid -> expression
+      val open_: ?loc:loc -> ?attrs:attrs -> open_declaration -> expression
                  -> expression
       val extension: ?loc:loc -> ?attrs:attrs -> extension -> expression
       val unreachable: ?loc:loc -> ?attrs:attrs -> unit -> expression
@@ -1425,7 +1467,7 @@ module Ast_helper : sig
       val module_: ?loc:loc -> module_binding -> structure_item
       val rec_module: ?loc:loc -> module_binding list -> structure_item
       val modtype: ?loc:loc -> module_type_declaration -> structure_item
-      val open_: ?loc:loc -> open_description -> structure_item
+      val open_: ?loc:loc -> open_declaration -> structure_item
       val class_: ?loc:loc -> class_declaration list -> structure_item
       val class_type: ?loc:loc -> class_type_declaration list -> structure_item
       val include_: ?loc:loc -> include_declaration -> structure_item
@@ -1459,7 +1501,7 @@ module Ast_helper : sig
   module Opn:
     sig
       val mk: ?loc: loc -> ?attrs:attrs -> ?docs:docs ->
-        ?override:override_flag -> lid -> open_description
+        ?override:override_flag -> 'a -> 'a open_infos
     end
 
   (** Includes *)
@@ -1489,7 +1531,7 @@ module Ast_helper : sig
       val arrow: ?loc:loc -> ?attrs:attrs -> arg_label -> core_type ->
         class_type -> class_type
       val extension: ?loc:loc -> ?attrs:attrs -> extension -> class_type
-      val open_: ?loc:loc -> ?attrs:attrs -> override_flag -> lid -> class_type
+      val open_: ?loc:loc -> ?attrs:attrs -> open_description -> class_type
                  -> class_type
     end
 
@@ -1529,7 +1571,7 @@ module Ast_helper : sig
       val constraint_: ?loc:loc -> ?attrs:attrs -> class_expr -> class_type ->
         class_expr
       val extension: ?loc:loc -> ?attrs:attrs -> extension -> class_expr
-      val open_: ?loc:loc -> ?attrs:attrs -> override_flag -> lid -> class_expr
+      val open_: ?loc:loc -> ?attrs:attrs -> open_description -> class_expr
                  -> class_expr
     end
 
@@ -1793,7 +1835,7 @@ end = struct
     let object_ ?loc ?attrs a = mk ?loc ?attrs (Pexp_object a)
     let newtype ?loc ?attrs a b = mk ?loc ?attrs (Pexp_newtype (a, b))
     let pack ?loc ?attrs a = mk ?loc ?attrs (Pexp_pack a)
-    let open_ ?loc ?attrs a b c = mk ?loc ?attrs (Pexp_open (a, b, c))
+    let open_ ?loc ?attrs a b = mk ?loc ?attrs (Pexp_open (a, b))
     let extension ?loc ?attrs a = mk ?loc ?attrs (Pexp_extension a)
     let unreachable ?loc ?attrs () = mk ?loc ?attrs Pexp_unreachable
 
@@ -1898,7 +1940,7 @@ end = struct
     let let_ ?loc ?attrs a b c = mk ?loc ?attrs (Pcl_let (a, b, c))
     let constraint_ ?loc ?attrs a b = mk ?loc ?attrs (Pcl_constraint (a, b))
     let extension ?loc ?attrs a = mk ?loc ?attrs (Pcl_extension a)
-    let open_ ?loc ?attrs a b c = mk ?loc ?attrs (Pcl_open (a, b, c))
+    let open_ ?loc ?attrs a b = mk ?loc ?attrs (Pcl_open (a, b))
   end
 
   module Cty = struct
@@ -1914,7 +1956,7 @@ end = struct
     let signature ?loc ?attrs a = mk ?loc ?attrs (Pcty_signature a)
     let arrow ?loc ?attrs a b c = mk ?loc ?attrs (Pcty_arrow (a, b, c))
     let extension ?loc ?attrs a = mk ?loc ?attrs (Pcty_extension a)
-    let open_ ?loc ?attrs a b c = mk ?loc ?attrs (Pcty_open (a, b, c))
+    let open_ ?loc ?attrs a b = mk ?loc ?attrs (Pcty_open (a, b))
   end
 
   module Ctf = struct
@@ -2021,9 +2063,9 @@ end = struct
 
   module Opn = struct
     let mk ?(loc = !default_loc) ?(attrs = []) ?(docs = empty_docs)
-          ?(override = Fresh) lid =
+          ?(override = Fresh) expr =
       {
-       popen_lid = lid;
+       popen_expr = expr;
        popen_override = override;
        popen_loc = loc;
        popen_attributes = add_docs_attrs docs attrs;
@@ -2329,6 +2371,7 @@ end = struct
   type mapper (*IF_CURRENT = Ast_mapper.mapper*) = {
   attribute: mapper -> attribute -> attribute;
   attributes: mapper -> attribute list -> attribute list;
+  binding_op: mapper -> binding_op -> binding_op;
   case: mapper -> case -> case;
   cases: mapper -> case list -> case list;
   class_declaration: mapper -> class_declaration -> class_declaration;
@@ -2353,10 +2396,12 @@ end = struct
   location: mapper -> Location.t -> Location.t;
   module_binding: mapper -> module_binding -> module_binding;
   module_declaration: mapper -> module_declaration -> module_declaration;
+  module_substitution: mapper -> module_substitution -> module_substitution;
   module_expr: mapper -> module_expr -> module_expr;
   module_type: mapper -> module_type -> module_type;
   module_type_declaration: mapper -> module_type_declaration
                            -> module_type_declaration;
+  open_declaration: mapper -> open_declaration -> open_declaration;
   open_description: mapper -> open_description -> open_description;
   pat: mapper -> pattern -> pattern;
   payload: mapper -> payload -> payload;
@@ -2522,8 +2567,8 @@ end = struct
       | Pcty_arrow (lab, t, ct) ->
           arrow ~loc ~attrs lab (sub.typ sub t) (sub.class_type sub ct)
       | Pcty_extension x -> extension ~loc ~attrs (sub.extension sub x)
-      | Pcty_open (ovf, lid, ct) ->
-          open_ ~loc ~attrs ovf (map_loc sub lid) (sub.class_type sub ct)
+      | Pcty_open (o, ct) ->
+        open_ ~loc ~attrs (sub.open_description sub o) (sub.class_type sub ct)
 
     let map_field sub {pctf_desc = desc; pctf_loc = loc; pctf_attributes = attrs}
       =
@@ -2584,6 +2629,8 @@ end = struct
       match desc with
       | Psig_value vd -> value ~loc (sub.value_description sub vd)
       | Psig_type (rf, l) -> type_ ~loc rf (List.map (sub.type_declaration sub) l)
+      | Psig_typesubst l ->
+        type_subst ~loc (List.map (sub.type_declaration sub) l)
       | Psig_typext te -> type_extension ~loc (sub.type_extension sub te)
       | Psig_exception ed -> exception_ ~loc (sub.type_exception sub ed)
       | Psig_module x -> module_ ~loc (sub.module_declaration sub x)
