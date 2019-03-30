@@ -577,17 +577,20 @@ module Parsetree = struct
     (* M.(E)
        let open M in E
        let! open M in E *)
-    | Pexp_letop of {
-        let_ : binding_op;
-        ands : binding_op list;
-        body : expression;
-      }
+    | Pexp_letop of letop
     (* let* P = E in E
        let* P = E and* P = E in E *)
     | Pexp_extension of extension
     (* [%id] *)
     | Pexp_unreachable
-    (* . *)
+  (* . *)
+
+  and letop (*IF_CURRENT = Parsetree.letop *)=
+    {
+        let_ : binding_op;
+        ands : binding_op list;
+        body : expression;
+      }
 
   and case (*IF_CURRENT = Parsetree.case *) =   (* (P -> E) or (P when E0 -> E) *)
     {
