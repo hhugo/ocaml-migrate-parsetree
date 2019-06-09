@@ -20,7 +20,7 @@ let () =
   in
   let arg_spec = [
     (*$ foreach_version (fun suffix version ->
-          printf "(\"-to-ocaml%s\", Arg.String (add (To Migrate_parsetree.OCaml_%s)),\n" suffix suffix;
+          printf "(\"-to-ocaml%s\", Arg.String (add (To Migrate_parsetree.Versions.ocaml_%s)),\n" suffix suffix;
           printf "\"<filename> Produce an ast valid for OCaml %s in <filename>\");\n" version;
         )
     *)
@@ -45,13 +45,7 @@ let () =
   );
   let (src_filename, ast) =
     let ic = open_in_bin !input in
-    let result =
-      try
-        Migrate_parsetree.Ast_io.from_channel ic
-      with exn ->
-        close_in ic;
-        raise exn
-    in
+    let result = Migrate_parsetree.Ast_io.from_channel ic in
     close_in ic;
     match result with
     | Error (Unknown_version number) ->
@@ -72,13 +66,11 @@ let () =
     let ast' : Migrate_parsetree.Ast_io.ast =
       match ast with
       | Impl ((module Src), src_impl) ->
-          let module Convert = Migrate_parsetree.Versions.Convert(Src)(Dst) in
-          let dst_impl = Convert.copy_structure src_impl in
-          (Impl ((module Dst), dst_impl))
+        let migrate = (Migrate_parsetree.Versions.migrate (module Src) (module Dst)) in
+        Impl ((module Dst), migrate.copy_structure src_impl)
       | Intf ((module Src), src_sig) ->
-          let module Convert = Migrate_parsetree.Versions.Convert(Src)(Dst) in
-          let dst_sig = Convert.copy_signature src_sig in
-          (Intf ((module Dst), dst_sig))
+        let migrate = (Migrate_parsetree.Versions.migrate (module Src) (module Dst)) in
+        Intf ((module Dst), migrate.copy_signature src_sig)
     in
     match
       let oc = open_out_bin dst_filename in
